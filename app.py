@@ -450,27 +450,28 @@ with prediction_tab:
             )
             st.code(str(error))
             st.stop()
+        # ==========================================
+        # Prediction Card
+        # ==========================================
 
-st.markdown(
-    f"""
-    <div class="prediction-card">
+        st.markdown(
+            f"""
+            <div class="prediction-card">
+                <p class="prediction-label">
+                    Estimated retail price
+                </p>
 
-        <p class="prediction-label">
-            Estimated retail price
-        </p>
+                <p class="prediction-value">
+                    ${prediction:.2f}
+                </p>
 
-        <p class="prediction-value">
-            ${prediction:.2f}
-        </p>
-
-        <p class="small-note">
-            Per dozen Grade A large eggs
-        </p>
-
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+                <p class="small-note">
+                    Per dozen Grade A large eggs
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
     
 
