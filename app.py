@@ -7,18 +7,54 @@ import streamlit as st
 # Page setup
 # ---------------------------------------------------
 
+# ---------------------------------------------------
+# Page setup
+# ---------------------------------------------------
+
 st.set_page_config(
     page_title="Steven's Egg Price AI",
     page_icon="🥚",
     layout="wide"
 )
 
-st.title("🥚 Egg Price Prediction System")
+# Sidebar
+with st.sidebar:
+    st.title("🥚 Egg Price AI")
 
-st.write(
-    "Enter current economic and agricultural values below "
-    "to estimate the average U.S. retail price of one dozen "
-    "Grade A large eggs."
+    st.write(
+        "A machine learning application that estimates "
+        "the average U.S. retail price of one dozen eggs."
+    )
+
+    st.markdown("---")
+
+    st.subheader("Model Inputs")
+
+    st.write(
+        "• Corn price\n"
+        "• Soybean price\n"
+        "• Diesel price\n"
+        "• CPI\n"
+        "• Inflation rate\n"
+        "• Birds affected\n"
+        "• Bird flu outbreak"
+    )
+
+    st.markdown("---")
+
+    st.caption(
+        "Created by Steven A. Bonilla"
+    )
+
+# Main heading
+st.title("🥚 U.S. Egg Price Prediction System")
+
+st.markdown(
+    """
+    Use the form below to estimate the average retail price of
+    **one dozen Grade A large eggs** based on current economic
+    and agricultural conditions.
+    """
 )
 
 
