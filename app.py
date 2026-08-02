@@ -87,8 +87,6 @@ PREPROCESSING_PATH = (
     "models/egg_price_preprocessing.pkl"
 )
 
-# Change this filename only if your egg-price CSV
-# has a different name inside the data folder.
 EGG_HISTORY_PATH = "data/egg_prices.csv"
 
 FEATURE_COLUMNS = [
@@ -108,15 +106,13 @@ FEATURE_COLUMNS = [
 
 @st.cache_resource
 def load_model_files():
-    """Load the saved model and preprocessing pipeline."""
+    model = joblib.load(MODEL_PATH)
 
-    trained_model = joblib.load(MODEL_PATH)
-
-    trained_preprocessing = joblib.load(
+    preprocessing = joblib.load(
         PREPROCESSING_PATH
     )
 
-    return trained_model, trained_preprocessing
+    return model, preprocessing
 
 
 try:
@@ -124,8 +120,7 @@ try:
 
 except FileNotFoundError as error:
     st.error(
-        "The model or preprocessing file was not found. "
-        "Confirm that both files are inside the models folder."
+        "The model or preprocessing file was not found."
     )
     st.code(str(error))
     st.stop()
@@ -137,16 +132,13 @@ except Exception as error:
 
 
 # ===================================================
-# LOAD HISTORICAL EGG-PRICE DATA
+# LOAD HISTORICAL DATA
 # ===================================================
 
 @st.cache_data
 def load_egg_price_history():
-    """Load and prepare historical egg-price data."""
-
     history = pd.read_csv(EGG_HISTORY_PATH)
 
-    # Try to recognize common column names.
     date_candidates = [
         "date",
         "observation_date",
@@ -181,14 +173,12 @@ def load_egg_price_history():
 
     if date_column is None:
         raise ValueError(
-            "No recognized date column was found "
-            f"in {EGG_HISTORY_PATH}."
+            "No recognized date column was found."
         )
 
     if price_column is None:
         raise ValueError(
-            "No recognized egg-price column was found "
-            f"in {EGG_HISTORY_PATH}."
+            "No recognized egg-price column was found."
         )
 
     history = history.rename(
@@ -344,8 +334,8 @@ with prediction_tab:
 
     st.write(
         "Corn and soybean prices are entered in dollars "
-        "per bushel. The application converts them to "
-        "dollars per metric ton before making a prediction."
+        "per bushel. The app converts them to dollars per "
+        "metric ton before making a prediction."
     )
 
     with st.form("prediction_form"):
@@ -359,11 +349,7 @@ with prediction_tab:
                 min_value=0.0,
                 max_value=30.0,
                 value=4.50,
-                step=0.01,
-                help=(
-                    "Typical historical range is "
-                    "approximately $3 to $8."
-                )
+                step=0.01
             )
 
             soybean_bushel = st.number_input(
@@ -371,11 +357,7 @@ with prediction_tab:
                 min_value=0.0,
                 max_value=50.0,
                 value=10.50,
-                step=0.01,
-                help=(
-                    "Typical historical range is "
-                    "approximately $8 to $18."
-                )
+                step=0.01
             )
 
             diesel_price = st.number_input(
@@ -401,11 +383,7 @@ with prediction_tab:
                 min_value=-20.0,
                 max_value=50.0,
                 value=3.0,
-                step=0.1,
-                help=(
-                    "Enter 3.2 to represent "
-                    "an inflation rate of 3.2%."
-                )
+                step=0.1
             )
 
             bird_affected = st.number_input(
@@ -438,13 +416,8 @@ with prediction_tab:
             1 if outbreak_choice == "Yes" else 0
         )
 
-        # Convert dollars per bushel to
-        # dollars per metric ton.
         corn_metric_ton = corn_bushel * 39.368
-
-        soybean_metric_ton = (
-            soybean_bushel * 36.744
-        )
+        soybean_metric_ton = soybean_bushel * 36.744
 
         new_data = pd.DataFrame(
             {
@@ -537,26 +510,17 @@ with prediction_tab:
                         "Bird flu outbreak"
                     ],
                     "Value": [
-                        (
-                            f"${corn_bushel:.2f} "
-                            "per bushel"
-                        ),
+                        f"${corn_bushel:.2f} per bushel",
                         (
                             f"${corn_metric_ton:,.2f} "
                             "per metric ton"
                         ),
-                        (
-                            f"${soybean_bushel:.2f} "
-                            "per bushel"
-                        ),
+                        f"${soybean_bushel:.2f} per bushel",
                         (
                             f"${soybean_metric_ton:,.2f} "
                             "per metric ton"
                         ),
-                        (
-                            f"${diesel_price:.2f} "
-                            "per gallon"
-                        ),
+                        f"${diesel_price:.2f} per gallon",
                         f"{cpi:.2f}",
                         f"{inflation_rate:.2f}%",
                         f"{bird_affected:,}",
@@ -610,6 +574,97 @@ with prediction_tab:
         )
 
 
+        # ===========================================
+        # AI INSIGHTS
+        # ===========================================
+
+        st.divider()
+
+        st.subheader("🤖 AI Insights")
+
+        insights = []
+
+        if bird_flu_outbreak == 1:
+            insights.append(
+                "🦠 A bird flu outbreak was reported. "
+                "Reduced poultry supply may place upward "
+                "pressure on egg prices."
+            )
+
+        if inflation_rate >= 4:
+            insights.append(
+                "📈 Inflation is relatively high. "
+                "Production, packaging, and transportation "
+                "costs may be elevated."
+            )
+
+        elif inflation_rate < 0:
+            insights.append(
+                "📉 Inflation is negative, which may indicate "
+                "slower overall price growth."
+            )
+
+        if diesel_price >= 4:
+            insights.append(
+                "⛽ Diesel prices are elevated. "
+                "Higher transportation costs may increase "
+                "retail egg prices."
+            )
+
+        if corn_bushel >= 6:
+            insights.append(
+                "🌽 Corn prices are above the typical range. "
+                "Higher feed costs may increase production "
+                "expenses."
+            )
+
+        if soybean_bushel >= 14:
+            insights.append(
+                "🌱 Soybean prices are relatively high. "
+                "This may increase poultry feed costs."
+            )
+
+        if bird_affected >= 10_000_000:
+            insights.append(
+                "🐔 A large number of birds were affected. "
+                "This may reduce egg production and tighten "
+                "supply."
+            )
+
+        elif 0 < bird_affected < 10_000_000:
+            insights.append(
+                "🐔 Bird flu affected part of the poultry "
+                "population, which may influence supply."
+            )
+
+        if prediction >= 5:
+            insights.append(
+                "💵 The predicted egg price is relatively "
+                "high compared with many historical periods."
+            )
+
+        elif prediction <= 2:
+            insights.append(
+                "💵 The predicted egg price is relatively "
+                "low compared with many recent periods."
+            )
+
+        if not insights:
+            insights.append(
+                "✅ The entered conditions appear relatively "
+                "stable. No major high-cost or outbreak "
+                "signals were detected."
+            )
+
+        for insight in insights:
+            st.info(insight)
+
+        st.caption(
+            "These AI insights are rule-based explanations "
+            "created from the entered values. They help "
+            "interpret the prediction but do not prove "
+            "causation."
+        )
 # ===================================================
 # TAB 2: DATA DASHBOARD
 # ===================================================
@@ -622,6 +677,10 @@ with dashboard_tab:
         "Explore historical egg prices and examine which "
         "features were most influential in the model."
     )
+
+    # -----------------------------------------------
+    # Historical egg-price chart
+    # -----------------------------------------------
 
     st.subheader("Historical U.S. Egg Prices")
 
@@ -719,15 +778,17 @@ with dashboard_tab:
             st.code(history_error)
 
         st.write(
-            "Check the `EGG_HISTORY_PATH` value near the "
-            "top of `app.py` and confirm the CSV filename."
+            "Check the EGG_HISTORY_PATH value near the top "
+            "of app.py and confirm the CSV filename."
         )
 
     st.divider()
 
-    st.subheader(
-        "Decision Tree Feature Importance"
-    )
+    # -----------------------------------------------
+    # Feature importance chart
+    # -----------------------------------------------
+
+    st.subheader("Decision Tree Feature Importance")
 
     if hasattr(model, "feature_importances_"):
 
@@ -788,8 +849,8 @@ with dashboard_tab:
         )
 
         st.caption(
-            "Feature importance measures usefulness inside "
-            "the model. It does not prove causation."
+            "Feature importance measures predictive usefulness "
+            "inside the model. It does not prove causation."
         )
 
     else:
@@ -805,7 +866,7 @@ with dashboard_tab:
 
 with model_tab:
 
-    st.header("Model Details")
+    st.header("🌳 Model Details")
 
     model_column_1, model_column_2, model_column_3 = (
         st.columns(3)
@@ -909,7 +970,7 @@ with model_tab:
 
 with project_tab:
 
-    st.header("About the Project")
+    st.header("📘 About the Project")
 
     st.write(
         """
