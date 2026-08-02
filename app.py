@@ -454,26 +454,48 @@ with prediction_tab:
         # Prediction Card
         # ==========================================
 
-        st.markdown(
-            f"""
-            <div class="prediction-card">
-                <p class="prediction-label">
-                    Estimated retail price
-                </p>
+        st.divider()
 
-                <p class="prediction-value">
-                    ${prediction:.2f}
-                </p>
+        st.subheader("🥚 Predicted Egg Price")
 
-                <p class="small-note">
-                    Per dozen Grade A large eggs
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        prediction_box = st.container(border=True)
 
-    
+        with prediction_box:
+
+            st.metric(
+                label ="Estimated Retail Price",
+                value=f"${prediction:.2f}",
+                 help="Estimated average retail price for one dozen Grade A large eggs."
+            )
+
+            st.cpation(
+                "Per dozen Grade A large eggs"
+            )
+
+        # ==================================================
+        # Quick Summary
+        # ==================================================
+
+        result_column_1, result_column_2, result_column_3 = st.columns(3)
+
+        with result_column_1:
+            st.metric(
+                "Predicted Price",
+                f"${prediction:.2f}"
+            )
+
+        with result_column_2:
+             st.metric(
+                  "Bird Flu",
+                  outbreak_choice
+             )
+
+        with result_column_3:
+            st.metric(
+                "Inflation",
+                f"{inflation_rate:.2f}%"
+            )
+
 
         result_column_1, result_column_2, result_column_3 = (
             st.columns(3)
