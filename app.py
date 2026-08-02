@@ -22,7 +22,7 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-        .main-title {
+        .main-title {Ftr
             font-size: 2.7rem;
             font-weight: 800;
             margin-bottom: 0.25rem;
@@ -94,6 +94,10 @@ def load_model_files():
 
 try:
     model, preprocessing = load_model_files()
+
+    # Temporary check to confirm which model Streamlit loaded
+    st.sidebar.write("Loaded model:")
+    st.sidebar.code(type(model).__name__)
 
 except FileNotFoundError as error:
     st.error(
