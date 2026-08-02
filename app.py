@@ -451,9 +451,10 @@ with prediction_tab:
             st.code(str(error))
             st.stop()
 
-       st.markdown(
+st.markdown(
     f"""
     <div class="prediction-card">
+
         <p class="prediction-label">
             Estimated retail price
         </p>
@@ -465,6 +466,7 @@ with prediction_tab:
         <p class="small-note">
             Per dozen Grade A large eggs
         </p>
+
     </div>
     """,
     unsafe_allow_html=True
