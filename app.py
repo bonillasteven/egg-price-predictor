@@ -469,7 +469,7 @@ with prediction_tab:
     """,
     unsafe_allow_html=True
 )
-)
+
         )
 
         result_column_1, result_column_2, result_column_3 = (
