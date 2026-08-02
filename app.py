@@ -25,12 +25,12 @@ st.markdown(
         .main-title {
             font-size: 2.7rem;
             font-weight: 800;
-            margin-bottom: 0.2rem;
+            margin-bottom: 0.25rem;
         }
 
         .subtitle {
-            font-size: 1.1rem;
-            color: #6b7280;
+            font-size: 1.05rem;
+            color: #8b94a7;
             margin-bottom: 2rem;
         }
 
@@ -38,15 +38,15 @@ st.markdown(
             padding: 28px;
             border-radius: 16px;
             text-align: center;
-            border: 1px solid rgba(120, 120, 120, 0.25);
+            border: 1px solid rgba(120, 120, 120, 0.30);
             margin-top: 20px;
             margin-bottom: 20px;
         }
 
         .prediction-label {
             font-size: 1rem;
-            color: #6b7280;
-            margin-bottom: 5px;
+            color: #8b94a7;
+            margin-bottom: 6px;
         }
 
         .prediction-value {
@@ -56,14 +56,14 @@ st.markdown(
 
         .small-note {
             font-size: 0.9rem;
-            color: #6b7280;
+            color: #8b94a7;
         }
 
         .footer {
             text-align: center;
             padding-top: 25px;
             padding-bottom: 20px;
-            color: #6b7280;
+            color: #8b94a7;
         }
 
         div[data-testid="stMetric"] {
@@ -78,11 +78,18 @@ st.markdown(
 
 
 # ===================================================
-# FILE PATHS AND MODEL FEATURES
+# FILE PATHS AND FEATURES
 # ===================================================
 
 MODEL_PATH = "models/egg_price_model.pkl"
-PREPROCESSING_PATH = "models/egg_price_preprocessing.pkl"
+
+PREPROCESSING_PATH = (
+    "models/egg_price_preprocessing.pkl"
+)
+
+# Change this filename only if your egg-price CSV
+# has a different name inside the data folder.
+EGG_HISTORY_PATH = "data/egg_prices.csv"
 
 FEATURE_COLUMNS = [
     "corn_price",
@@ -101,12 +108,13 @@ FEATURE_COLUMNS = [
 
 @st.cache_resource
 def load_model_files():
-    """
-    Load the trained model and preprocessing pipeline.
-    """
+    """Load the saved model and preprocessing pipeline."""
 
     trained_model = joblib.load(MODEL_PATH)
-    trained_preprocessing = joblib.load(PREPROCESSING_PATH)
+
+    trained_preprocessing = joblib.load(
+        PREPROCESSING_PATH
+    )
 
     return trained_model, trained_preprocessing
 
@@ -116,7 +124,7 @@ try:
 
 except FileNotFoundError as error:
     st.error(
-        "The model or preprocessing file could not be found. "
+        "The model or preprocessing file was not found. "
         "Confirm that both files are inside the models folder."
     )
     st.code(str(error))
@@ -129,6 +137,97 @@ except Exception as error:
 
 
 # ===================================================
+# LOAD HISTORICAL EGG-PRICE DATA
+# ===================================================
+
+@st.cache_data
+def load_egg_price_history():
+    """Load and prepare historical egg-price data."""
+
+    history = pd.read_csv(EGG_HISTORY_PATH)
+
+    # Try to recognize common column names.
+    date_candidates = [
+        "date",
+        "observation_date",
+        "Date",
+        "DATE"
+    ]
+
+    price_candidates = [
+        "egg_price",
+        "value",
+        "Value",
+        "APU0000708111"
+    ]
+
+    date_column = next(
+        (
+            column
+            for column in date_candidates
+            if column in history.columns
+        ),
+        None
+    )
+
+    price_column = next(
+        (
+            column
+            for column in price_candidates
+            if column in history.columns
+        ),
+        None
+    )
+
+    if date_column is None:
+        raise ValueError(
+            "No recognized date column was found "
+            f"in {EGG_HISTORY_PATH}."
+        )
+
+    if price_column is None:
+        raise ValueError(
+            "No recognized egg-price column was found "
+            f"in {EGG_HISTORY_PATH}."
+        )
+
+    history = history.rename(
+        columns={
+            date_column: "date",
+            price_column: "egg_price"
+        }
+    )
+
+    history["date"] = pd.to_datetime(
+        history["date"],
+        errors="coerce"
+    )
+
+    history["egg_price"] = pd.to_numeric(
+        history["egg_price"],
+        errors="coerce"
+    )
+
+    history = history.dropna(
+        subset=["date", "egg_price"]
+    )
+
+    history = history.sort_values(
+        "date"
+    ).reset_index(drop=True)
+
+    return history
+
+
+try:
+    egg_history = load_egg_price_history()
+
+except Exception as error:
+    egg_history = None
+    history_error = str(error)
+
+
+# ===================================================
 # SIDEBAR
 # ===================================================
 
@@ -137,8 +236,9 @@ with st.sidebar:
     st.title("🥚 Egg Price AI")
 
     st.write(
-        "A machine learning application that estimates the "
-        "average U.S. retail price of one dozen Grade A large eggs."
+        "A machine learning application that estimates "
+        "the average U.S. retail price of one dozen "
+        "Grade A large eggs."
     )
 
     st.divider()
@@ -146,10 +246,9 @@ with st.sidebar:
     st.subheader("Model Information")
 
     st.write("**Model:** Decision Tree Regressor")
-    st.write(f"**Number of features:** {len(FEATURE_COLUMNS)}")
+    st.write(f"**Features:** {len(FEATURE_COLUMNS)}")
     st.write("**Target:** Monthly egg price")
 
-    # Update these numbers if retraining changes your scores.
     metric_column_1, metric_column_2 = st.columns(2)
 
     with metric_column_1:
@@ -180,8 +279,11 @@ with st.sidebar:
     st.subheader("Project Links")
 
     st.link_button(
-        "www.linkedin.com/in/steven-bonilla-a26185400",
-        "https://github.com/bonillasteven/egg-price-predictor",
+        "View GitHub Repository",
+        (
+            "https://github.com/"
+            "bonillasteven/egg-price-predictor"
+        ),
         use_container_width=True
     )
 
@@ -193,15 +295,20 @@ with st.sidebar:
 # ===================================================
 
 st.markdown(
-    '<div class="main-title">🥚 U.S. Egg Price Prediction System</div>',
+    (
+        '<div class="main-title">'
+        "🥚 U.S. Egg Price Prediction System"
+        "</div>"
+    ),
     unsafe_allow_html=True
 )
 
 st.markdown(
     """
     <div class="subtitle">
-        Estimate the monthly average retail price of one dozen Grade A
-        large eggs using current economic and agricultural conditions.
+        Estimate the monthly average retail price of one dozen
+        Grade A large eggs using current economic and
+        agricultural conditions.
     </div>
     """,
     unsafe_allow_html=True
@@ -212,9 +319,15 @@ st.markdown(
 # MAIN TABS
 # ===================================================
 
-prediction_tab, model_tab, project_tab = st.tabs(
+(
+    prediction_tab,
+    dashboard_tab,
+    model_tab,
+    project_tab
+) = st.tabs(
     [
         "🔮 Make a Prediction",
+        "📊 Data Dashboard",
         "🌳 Model Details",
         "📘 About the Project"
     ]
@@ -230,9 +343,9 @@ with prediction_tab:
     st.subheader("Enter Current Values")
 
     st.write(
-        "Corn and soybean prices can be entered in dollars per bushel. "
-        "The application automatically converts them into dollars per "
-        "metric ton before sending them to the model."
+        "Corn and soybean prices are entered in dollars "
+        "per bushel. The application converts them to "
+        "dollars per metric ton before making a prediction."
     )
 
     with st.form("prediction_form"):
@@ -247,7 +360,10 @@ with prediction_tab:
                 max_value=30.0,
                 value=4.50,
                 step=0.01,
-                help="Typical historical range is approximately $3 to $8."
+                help=(
+                    "Typical historical range is "
+                    "approximately $3 to $8."
+                )
             )
 
             soybean_bushel = st.number_input(
@@ -256,7 +372,10 @@ with prediction_tab:
                 max_value=50.0,
                 value=10.50,
                 step=0.01,
-                help="Typical historical range is approximately $8 to $18."
+                help=(
+                    "Typical historical range is "
+                    "approximately $8 to $18."
+                )
             )
 
             diesel_price = st.number_input(
@@ -283,7 +402,10 @@ with prediction_tab:
                 max_value=50.0,
                 value=3.0,
                 step=0.1,
-                help="Enter 3.2 to represent 3.2% inflation."
+                help=(
+                    "Enter 3.2 to represent "
+                    "an inflation rate of 3.2%."
+                )
             )
 
             bird_affected = st.number_input(
@@ -310,20 +432,19 @@ with prediction_tab:
             use_container_width=True
         )
 
-
-    # ===============================================
-    # RUN PREDICTION
-    # ===============================================
-
     if submit_button:
 
         bird_flu_outbreak = (
             1 if outbreak_choice == "Yes" else 0
         )
 
-        # Convert dollars per bushel to dollars per metric ton.
+        # Convert dollars per bushel to
+        # dollars per metric ton.
         corn_metric_ton = corn_bushel * 39.368
-        soybean_metric_ton = soybean_bushel * 36.744
+
+        soybean_metric_ton = (
+            soybean_bushel * 36.744
+        )
 
         new_data = pd.DataFrame(
             {
@@ -333,22 +454,27 @@ with prediction_tab:
                 "cpi": [cpi],
                 "inflation_rate": [inflation_rate],
                 "bird_affected": [bird_affected],
-                "bird_flu_outbreak": [bird_flu_outbreak]
+                "bird_flu_outbreak": [
+                    bird_flu_outbreak
+                ]
             }
         )
 
-        # Ensure the exact feature order used during training.
         new_data = new_data[FEATURE_COLUMNS]
 
         try:
-            new_data_prepared = preprocessing.transform(new_data)
+            new_data_prepared = (
+                preprocessing.transform(new_data)
+            )
 
             prediction = model.predict(
                 new_data_prepared
             )[0]
 
         except Exception as error:
-            st.error("The prediction could not be completed.")
+            st.error(
+                "The prediction could not be completed."
+            )
             st.code(str(error))
             st.stop()
 
@@ -371,7 +497,9 @@ with prediction_tab:
             unsafe_allow_html=True
         )
 
-        result_column_1, result_column_2, result_column_3 = st.columns(3)
+        result_column_1, result_column_2, result_column_3 = (
+            st.columns(3)
+        )
 
         with result_column_1:
             st.metric(
@@ -409,11 +537,26 @@ with prediction_tab:
                         "Bird flu outbreak"
                     ],
                     "Value": [
-                        f"${corn_bushel:.2f} per bushel",
-                        f"${corn_metric_ton:,.2f} per metric ton",
-                        f"${soybean_bushel:.2f} per bushel",
-                        f"${soybean_metric_ton:,.2f} per metric ton",
-                        f"${diesel_price:.2f} per gallon",
+                        (
+                            f"${corn_bushel:.2f} "
+                            "per bushel"
+                        ),
+                        (
+                            f"${corn_metric_ton:,.2f} "
+                            "per metric ton"
+                        ),
+                        (
+                            f"${soybean_bushel:.2f} "
+                            "per bushel"
+                        ),
+                        (
+                            f"${soybean_metric_ton:,.2f} "
+                            "per metric ton"
+                        ),
+                        (
+                            f"${diesel_price:.2f} "
+                            "per gallon"
+                        ),
                         f"{cpi:.2f}",
                         f"{inflation_rate:.2f}%",
                         f"{bird_affected:,}",
@@ -430,14 +573,22 @@ with prediction_tab:
 
         prediction_download = pd.DataFrame(
             {
-                "predicted_egg_price": [round(prediction, 2)],
-                "corn_price_per_bushel": [corn_bushel],
-                "soybean_price_per_bushel": [soybean_bushel],
+                "predicted_egg_price": [
+                    round(prediction, 2)
+                ],
+                "corn_price_per_bushel": [
+                    corn_bushel
+                ],
+                "soybean_price_per_bushel": [
+                    soybean_bushel
+                ],
                 "diesel_price": [diesel_price],
                 "cpi": [cpi],
                 "inflation_rate": [inflation_rate],
                 "bird_affected": [bird_affected],
-                "bird_flu_outbreak": [bird_flu_outbreak]
+                "bird_flu_outbreak": [
+                    bird_flu_outbreak
+                ]
             }
         )
 
@@ -454,20 +605,211 @@ with prediction_tab:
         )
 
         st.info(
-            "This result is an estimate based on historical data. "
-            "It should not be considered a guaranteed future retail price."
+            "This result is an estimate based on historical "
+            "data. It is not a guaranteed future price."
         )
 
 
 # ===================================================
-# TAB 2: MODEL DETAILS
+# TAB 2: DATA DASHBOARD
+# ===================================================
+
+with dashboard_tab:
+
+    st.header("📊 Egg Price Data Dashboard")
+
+    st.write(
+        "Explore historical egg prices and examine which "
+        "features were most influential in the model."
+    )
+
+    st.subheader("Historical U.S. Egg Prices")
+
+    if egg_history is not None and not egg_history.empty:
+
+        chart_data = egg_history.set_index(
+            "date"
+        )[["egg_price"]]
+
+        st.line_chart(
+            chart_data,
+            x_label="Date",
+            y_label="Egg price ($ per dozen)",
+            use_container_width=True
+        )
+
+        latest_price = egg_history.iloc[-1][
+            "egg_price"
+        ]
+
+        highest_price = egg_history[
+            "egg_price"
+        ].max()
+
+        average_price = egg_history[
+            "egg_price"
+        ].mean()
+
+        latest_date = egg_history.iloc[-1][
+            "date"
+        ].strftime("%B %Y")
+
+        price_column_1, price_column_2, price_column_3 = (
+            st.columns(3)
+        )
+
+        with price_column_1:
+            st.metric(
+                "Latest Historical Price",
+                f"${latest_price:.2f}",
+                help=f"Latest observation: {latest_date}"
+            )
+
+        with price_column_2:
+            st.metric(
+                "Historical Average",
+                f"${average_price:.2f}"
+            )
+
+        with price_column_3:
+            st.metric(
+                "Highest Historical Price",
+                f"${highest_price:.2f}"
+            )
+
+        with st.expander(
+            "View historical egg-price data"
+        ):
+
+            history_table = egg_history.copy()
+
+            history_table["date"] = (
+                history_table["date"].dt.strftime(
+                    "%B %Y"
+                )
+            )
+
+            history_table["egg_price"] = (
+                history_table["egg_price"].round(2)
+            )
+
+            history_table = history_table.rename(
+                columns={
+                    "date": "Month",
+                    "egg_price": "Egg Price ($)"
+                }
+            )
+
+            history_table = history_table.sort_index(
+                ascending=False
+            )
+
+            st.dataframe(
+                history_table,
+                hide_index=True,
+                use_container_width=True
+            )
+
+    else:
+        st.warning(
+            "Historical egg-price data could not be loaded."
+        )
+
+        if "history_error" in globals():
+            st.code(history_error)
+
+        st.write(
+            "Check the `EGG_HISTORY_PATH` value near the "
+            "top of `app.py` and confirm the CSV filename."
+        )
+
+    st.divider()
+
+    st.subheader(
+        "Decision Tree Feature Importance"
+    )
+
+    if hasattr(model, "feature_importances_"):
+
+        feature_importance = pd.DataFrame(
+            {
+                "Feature": FEATURE_COLUMNS,
+                "Importance": model.feature_importances_
+            }
+        )
+
+        feature_importance["Importance (%)"] = (
+            feature_importance["Importance"] * 100
+        ).round(2)
+
+        feature_importance = (
+            feature_importance.sort_values(
+                by="Importance (%)",
+                ascending=True
+            )
+        )
+
+        feature_chart = (
+            feature_importance.set_index(
+                "Feature"
+            )[["Importance (%)"]]
+        )
+
+        st.bar_chart(
+            feature_chart,
+            horizontal=True,
+            x_label="Importance (%)",
+            y_label="Feature",
+            use_container_width=True
+        )
+
+        display_importance = (
+            feature_importance.sort_values(
+                by="Importance (%)",
+                ascending=False
+            )
+        )
+
+        st.dataframe(
+            display_importance[
+                ["Feature", "Importance (%)"]
+            ],
+            hide_index=True,
+            use_container_width=True
+        )
+
+        most_important = display_importance.iloc[0]
+
+        st.info(
+            f"The model's most influential feature was "
+            f"**{most_important['Feature']}**, with an "
+            f"importance score of "
+            f"**{most_important['Importance (%)']:.2f}%**."
+        )
+
+        st.caption(
+            "Feature importance measures usefulness inside "
+            "the model. It does not prove causation."
+        )
+
+    else:
+        st.warning(
+            "The loaded model does not provide "
+            "feature importance."
+        )
+
+
+# ===================================================
+# TAB 3: MODEL DETAILS
 # ===================================================
 
 with model_tab:
 
     st.header("Model Details")
 
-    model_column_1, model_column_2, model_column_3 = st.columns(3)
+    model_column_1, model_column_2, model_column_3 = (
+        st.columns(3)
+    )
 
     with model_column_1:
         st.metric(
@@ -491,10 +833,10 @@ with model_tab:
 
     st.write(
         """
-        The application uses a Decision Tree Regressor trained on
-        historical economic and agricultural data. The model divides
-        observations into decision-based groups and learns patterns
-        associated with different egg-price levels.
+        The application uses a Decision Tree Regressor
+        trained on historical economic and agricultural
+        data. The model learns decision rules that connect
+        the input variables to different egg-price levels.
         """
     )
 
@@ -512,13 +854,34 @@ with model_tab:
                 "Bird flu outbreak"
             ],
             "Purpose": [
-                "Represents an important poultry feed cost.",
-                "Represents another important poultry feed cost.",
-                "Represents transportation and distribution costs.",
-                "Represents the overall consumer price level.",
-                "Measures year-over-year change in CPI.",
-                "Represents the size of reported bird flu events.",
-                "Indicates whether an outbreak occurred."
+                (
+                    "Represents an important "
+                    "poultry feed cost."
+                ),
+                (
+                    "Represents another important "
+                    "poultry feed cost."
+                ),
+                (
+                    "Represents transportation and "
+                    "distribution costs."
+                ),
+                (
+                    "Represents the overall consumer "
+                    "price level."
+                ),
+                (
+                    "Measures year-over-year change "
+                    "in CPI."
+                ),
+                (
+                    "Represents the size of reported "
+                    "bird flu events."
+                ),
+                (
+                    "Indicates whether an outbreak "
+                    "occurred."
+                )
             ]
         }
     )
@@ -529,44 +892,19 @@ with model_tab:
         use_container_width=True
     )
 
-    st.subheader("Feature Importance")
+    st.subheader("Model Limitations")
 
-    if hasattr(model, "feature_importances_"):
-
-        feature_importance = pd.DataFrame(
-            {
-                "Feature": FEATURE_COLUMNS,
-                "Importance": model.feature_importances_
-            }
-        )
-
-        feature_importance = feature_importance.sort_values(
-            by="Importance",
-            ascending=False
-        )
-
-        feature_importance = feature_importance.set_index(
-            "Feature"
-        )
-
-        st.bar_chart(
-            feature_importance
-        )
-
-        st.caption(
-            "Higher values indicate that the feature was more useful "
-            "to the model. Feature importance does not prove causation."
-        )
-
-    else:
-        st.info(
-            "The loaded model does not provide tree-based "
-            "feature importance."
-        )
+    st.warning(
+        "The model uses historical relationships and does "
+        "not include every possible cause of egg-price "
+        "changes. Weather, labor costs, consumer demand, "
+        "government policy, and supply-chain events may "
+        "also affect actual prices."
+    )
 
 
 # ===================================================
-# TAB 3: PROJECT INFORMATION
+# TAB 4: PROJECT INFORMATION
 # ===================================================
 
 with project_tab:
@@ -575,9 +913,9 @@ with project_tab:
 
     st.write(
         """
-        The goal of this project was to develop a machine learning
-        system that predicts the monthly average U.S. retail price of
-        one dozen Grade A large eggs.
+        The goal of this project was to develop a machine
+        learning system that predicts the monthly average
+        U.S. retail price of one dozen Grade A large eggs.
         """
     )
 
@@ -593,6 +931,7 @@ with project_tab:
         "Tune model hyperparameters",
         "Evaluate and compare model performance",
         "Analyze feature importance",
+        "Validate chronological performance",
         "Deploy the final model with Streamlit"
     ]
 
@@ -600,7 +939,9 @@ with project_tab:
         workflow,
         start=1
     ):
-        st.write(f"**{step_number}.** {step}")
+        st.write(
+            f"**{step_number}.** {step}"
+        )
 
     st.subheader("Models Compared")
 
@@ -643,13 +984,16 @@ with project_tab:
     with technology_columns[3]:
         st.info("📊 Streamlit")
 
-    st.subheader("Important Limitation")
+    st.subheader("Future Improvements")
 
-    st.warning(
-        "The model is trained on historical data and does not include "
-        "every possible cause of egg-price changes. Weather, labor costs, "
-        "consumer demand, government policies, and unexpected supply-chain "
-        "events may also influence actual retail prices."
+    st.markdown(
+        """
+        - Add live economic and agricultural data
+        - Compare multiple prediction scenarios
+        - Add XGBoost and LightGBM
+        - Add SHAP prediction explanations
+        - Build a true future time-series forecast
+        """
     )
 
 
@@ -659,7 +1003,9 @@ with project_tab:
 
 st.divider()
 
-footer_column_1, footer_column_2, footer_column_3 = st.columns(3)
+footer_column_1, footer_column_2, footer_column_3 = (
+    st.columns(3)
+)
 
 with footer_column_1:
     st.caption("Created by")
@@ -671,12 +1017,15 @@ with footer_column_2:
 
 with footer_column_3:
     st.caption("Built With")
-    st.write("**Python • Streamlit • Scikit-learn**")
+    st.write(
+        "**Python • Streamlit • Scikit-learn**"
+    )
 
 st.markdown(
     """
     <div class="footer">
-        Steven's Egg Price AI — Educational and portfolio project
+        Steven's Egg Price AI —
+        Educational and portfolio project
     </div>
     """,
     unsafe_allow_html=True
