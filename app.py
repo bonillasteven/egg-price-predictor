@@ -34,31 +34,6 @@ st.markdown(
             margin-bottom: 2rem;
         }
 
-        .prediction-card {
-            padding: 28px;
-            border-radius: 16px;
-            text-align: center;
-            border: 1px solid rgba(120, 120, 120, 0.30);
-            margin-top: 20px;
-            margin-bottom: 20px;
-        }
-
-        .prediction-label {
-            font-size: 1rem;
-            color: #8b94a7;
-            margin-bottom: 6px;
-        }
-
-        .prediction-value {
-            font-size: 3rem;
-            font-weight: 800;
-        }
-
-        .small-note {
-            font-size: 0.9rem;
-            color: #8b94a7;
-        }
-
         .footer {
             text-align: center;
             padding-top: 25px;
@@ -106,13 +81,15 @@ FEATURE_COLUMNS = [
 
 @st.cache_resource
 def load_model_files():
-    model = joblib.load(MODEL_PATH)
+    """Load the saved model and preprocessing pipeline."""
 
-    preprocessing = joblib.load(
+    trained_model = joblib.load(MODEL_PATH)
+
+    trained_preprocessing = joblib.load(
         PREPROCESSING_PATH
     )
 
-    return model, preprocessing
+    return trained_model, trained_preprocessing
 
 
 try:
@@ -120,7 +97,8 @@ try:
 
 except FileNotFoundError as error:
     st.error(
-        "The model or preprocessing file was not found."
+        "The model or preprocessing file was not found. "
+        "Confirm that both files are inside the models folder."
     )
     st.code(str(error))
     st.stop()
@@ -132,11 +110,13 @@ except Exception as error:
 
 
 # ===================================================
-# LOAD HISTORICAL DATA
+# LOAD HISTORICAL EGG PRICE DATA
 # ===================================================
 
 @st.cache_data
 def load_egg_price_history():
+    """Load and prepare the historical egg-price dataset."""
+
     history = pd.read_csv(EGG_HISTORY_PATH)
 
     date_candidates = [
@@ -334,8 +314,8 @@ with prediction_tab:
 
     st.write(
         "Corn and soybean prices are entered in dollars "
-        "per bushel. The app converts them to dollars per "
-        "metric ton before making a prediction."
+        "per bushel. The application converts them to dollars "
+        "per metric ton before making a prediction."
     )
 
     with st.form("prediction_form"):
@@ -349,7 +329,11 @@ with prediction_tab:
                 min_value=0.0,
                 max_value=30.0,
                 value=4.50,
-                step=0.01
+                step=0.01,
+                help=(
+                    "Typical historical range is "
+                    "approximately $3 to $8."
+                )
             )
 
             soybean_bushel = st.number_input(
@@ -357,7 +341,11 @@ with prediction_tab:
                 min_value=0.0,
                 max_value=50.0,
                 value=10.50,
-                step=0.01
+                step=0.01,
+                help=(
+                    "Typical historical range is "
+                    "approximately $8 to $18."
+                )
             )
 
             diesel_price = st.number_input(
@@ -383,7 +371,11 @@ with prediction_tab:
                 min_value=-20.0,
                 max_value=50.0,
                 value=3.0,
-                step=0.1
+                step=0.1,
+                help=(
+                    "Enter 3.2 to represent "
+                    "an inflation rate of 3.2%."
+                )
             )
 
             bird_affected = st.number_input(
@@ -416,28 +408,27 @@ with prediction_tab:
             1 if outbreak_choice == "Yes" else 0
         )
 
+        # Convert dollars per bushel into
+        # dollars per metric ton.
         corn_metric_ton = corn_bushel * 39.368
         soybean_metric_ton = soybean_bushel * 36.744
 
-        new_data = pd.DataFrame(
-            {
-                "corn_price": [corn_metric_ton],
-                "soybean_price": [soybean_metric_ton],
-                "diesel_price": [diesel_price],
-                "cpi": [cpi],
-                "inflation_rate": [inflation_rate],
-                "bird_affected": [bird_affected],
-                "bird_flu_outbreak": [
-                    bird_flu_outbreak
-                ]
-            }
-        )
+        new_data = pd.DataFrame({
+            "corn_price": [corn_metric_ton],
+            "soybean_price": [soybean_metric_ton],
+            "diesel_price": [diesel_price],
+            "cpi": [cpi],
+            "inflation_rate": [inflation_rate],
+            "bird_affected": [bird_affected],
+            "bird_flu_outbreak": [bird_flu_outbreak]
+        })
 
+        # Keep the same feature order used during training.
         new_data = new_data[FEATURE_COLUMNS]
 
         try:
-            new_data_prepared = (
-                preprocessing.transform(new_data)
+            new_data_prepared = preprocessing.transform(
+                new_data
             )
 
             prediction = model.predict(
@@ -450,9 +441,10 @@ with prediction_tab:
             )
             st.code(str(error))
             st.stop()
-        # ==========================================
-        # Prediction Card
-        # ==========================================
+
+        # ===========================================
+        # PREDICTION RESULT
+        # ===========================================
 
         st.divider()
 
@@ -463,43 +455,27 @@ with prediction_tab:
         with prediction_box:
 
             st.metric(
-                label ="Estimated Retail Price",
+                label="Estimated Retail Price",
                 value=f"${prediction:.2f}",
-                 help="Estimated average retail price for one dozen Grade A large eggs."
+                help=(
+                    "Estimated average retail price for "
+                    "one dozen Grade A large eggs."
+                )
             )
 
-            st.cpation(
+            st.caption(
                 "Per dozen Grade A large eggs"
             )
 
-        # ==================================================
-        # Quick Summary
-        # ==================================================
+        # ===========================================
+        # QUICK SUMMARY
+        # ===========================================
 
-        result_column_1, result_column_2, result_column_3 = st.columns(3)
-
-        with result_column_1:
-            st.metric(
-                "Predicted Price",
-                f"${prediction:.2f}"
-            )
-
-        with result_column_2:
-             st.metric(
-                  "Bird Flu",
-                  outbreak_choice
-             )
-
-        with result_column_3:
-            st.metric(
-                "Inflation",
-                f"{inflation_rate:.2f}%"
-            )
-
-
-        result_column_1, result_column_2, result_column_3 = (
-            st.columns(3)
-        )
+        (
+            result_column_1,
+            result_column_2,
+            result_column_3
+        ) = st.columns(3)
 
         with result_column_1:
             st.metric(
@@ -519,42 +495,44 @@ with prediction_tab:
                 f"{inflation_rate:.2f}%"
             )
 
+        # ===========================================
+        # INPUT SUMMARY
+        # ===========================================
+
         if show_inputs:
 
             st.subheader("Input Summary")
 
-            summary = pd.DataFrame(
-                {
-                    "Input": [
-                        "Corn price entered",
-                        "Corn price used by model",
-                        "Soybean price entered",
-                        "Soybean price used by model",
-                        "Diesel price",
-                        "Consumer Price Index",
-                        "Inflation rate",
-                        "Birds affected",
-                        "Bird flu outbreak"
-                    ],
-                    "Value": [
-                        f"${corn_bushel:.2f} per bushel",
-                        (
-                            f"${corn_metric_ton:,.2f} "
-                            "per metric ton"
-                        ),
-                        f"${soybean_bushel:.2f} per bushel",
-                        (
-                            f"${soybean_metric_ton:,.2f} "
-                            "per metric ton"
-                        ),
-                        f"${diesel_price:.2f} per gallon",
-                        f"{cpi:.2f}",
-                        f"{inflation_rate:.2f}%",
-                        f"{bird_affected:,}",
-                        outbreak_choice
-                    ]
-                }
-            )
+            summary = pd.DataFrame({
+                "Input": [
+                    "Corn price entered",
+                    "Corn price used by model",
+                    "Soybean price entered",
+                    "Soybean price used by model",
+                    "Diesel price",
+                    "Consumer Price Index",
+                    "Inflation rate",
+                    "Birds affected",
+                    "Bird flu outbreak"
+                ],
+                "Value": [
+                    f"${corn_bushel:.2f} per bushel",
+                    (
+                        f"${corn_metric_ton:,.2f} "
+                        "per metric ton"
+                    ),
+                    f"${soybean_bushel:.2f} per bushel",
+                    (
+                        f"${soybean_metric_ton:,.2f} "
+                        "per metric ton"
+                    ),
+                    f"${diesel_price:.2f} per gallon",
+                    f"{cpi:.2f}",
+                    f"{inflation_rate:.2f}%",
+                    f"{bird_affected:,}",
+                    outbreak_choice
+                ]
+            })
 
             st.dataframe(
                 summary,
@@ -562,26 +540,28 @@ with prediction_tab:
                 use_container_width=True
             )
 
-        prediction_download = pd.DataFrame(
-            {
-                "predicted_egg_price": [
-                    round(prediction, 2)
-                ],
-                "corn_price_per_bushel": [
-                    corn_bushel
-                ],
-                "soybean_price_per_bushel": [
-                    soybean_bushel
-                ],
-                "diesel_price": [diesel_price],
-                "cpi": [cpi],
-                "inflation_rate": [inflation_rate],
-                "bird_affected": [bird_affected],
-                "bird_flu_outbreak": [
-                    bird_flu_outbreak
-                ]
-            }
-        )
+        # ===========================================
+        # DOWNLOAD RESULT
+        # ===========================================
+
+        prediction_download = pd.DataFrame({
+            "predicted_egg_price": [
+                round(prediction, 2)
+            ],
+            "corn_price_per_bushel": [
+                corn_bushel
+            ],
+            "soybean_price_per_bushel": [
+                soybean_bushel
+            ],
+            "diesel_price": [diesel_price],
+            "cpi": [cpi],
+            "inflation_rate": [inflation_rate],
+            "bird_affected": [bird_affected],
+            "bird_flu_outbreak": [
+                bird_flu_outbreak
+            ]
+        })
 
         csv_data = prediction_download.to_csv(
             index=False
@@ -599,7 +579,6 @@ with prediction_tab:
             "This result is an estimate based on historical "
             "data. It is not a guaranteed future price."
         )
-
 
         # ===========================================
         # AI INSIGHTS
@@ -692,6 +671,7 @@ with prediction_tab:
             "interpret the prediction but do not prove "
             "causation."
         )
+
 # ===================================================
 # TAB 2: DATA DASHBOARD
 # ===================================================
@@ -740,9 +720,11 @@ with dashboard_tab:
             "date"
         ].strftime("%B %Y")
 
-        price_column_1, price_column_2, price_column_3 = (
-            st.columns(3)
-        )
+        (
+            price_column_1,
+            price_column_2,
+            price_column_3
+        ) = st.columns(3)
 
         with price_column_1:
             st.metric(
@@ -819,12 +801,10 @@ with dashboard_tab:
 
     if hasattr(model, "feature_importances_"):
 
-        feature_importance = pd.DataFrame(
-            {
-                "Feature": FEATURE_COLUMNS,
-                "Importance": model.feature_importances_
-            }
-        )
+        feature_importance = pd.DataFrame({
+            "Feature": FEATURE_COLUMNS,
+            "Importance": model.feature_importances_
+        })
 
         feature_importance["Importance (%)"] = (
             feature_importance["Importance"] * 100
@@ -895,9 +875,11 @@ with model_tab:
 
     st.header("🌳 Model Details")
 
-    model_column_1, model_column_2, model_column_3 = (
-        st.columns(3)
-    )
+    (
+        model_column_1,
+        model_column_2,
+        model_column_3
+    ) = st.columns(3)
 
     with model_column_1:
         st.metric(
@@ -930,49 +912,47 @@ with model_tab:
 
     st.subheader("Input Features")
 
-    feature_information = pd.DataFrame(
-        {
-            "Feature": [
-                "Corn price",
-                "Soybean price",
-                "Diesel price",
-                "CPI",
-                "Inflation rate",
-                "Birds affected",
-                "Bird flu outbreak"
-            ],
-            "Purpose": [
-                (
-                    "Represents an important "
-                    "poultry feed cost."
-                ),
-                (
-                    "Represents another important "
-                    "poultry feed cost."
-                ),
-                (
-                    "Represents transportation and "
-                    "distribution costs."
-                ),
-                (
-                    "Represents the overall consumer "
-                    "price level."
-                ),
-                (
-                    "Measures year-over-year change "
-                    "in CPI."
-                ),
-                (
-                    "Represents the size of reported "
-                    "bird flu events."
-                ),
-                (
-                    "Indicates whether an outbreak "
-                    "occurred."
-                )
-            ]
-        }
-    )
+    feature_information = pd.DataFrame({
+        "Feature": [
+            "Corn price",
+            "Soybean price",
+            "Diesel price",
+            "CPI",
+            "Inflation rate",
+            "Birds affected",
+            "Bird flu outbreak"
+        ],
+        "Purpose": [
+            (
+                "Represents an important "
+                "poultry feed cost."
+            ),
+            (
+                "Represents another important "
+                "poultry feed cost."
+            ),
+            (
+                "Represents transportation and "
+                "distribution costs."
+            ),
+            (
+                "Represents the overall consumer "
+                "price level."
+            ),
+            (
+                "Measures year-over-year change "
+                "in CPI."
+            ),
+            (
+                "Represents the size of reported "
+                "bird flu events."
+            ),
+            (
+                "Indicates whether an outbreak "
+                "occurred."
+            )
+        ]
+    })
 
     st.dataframe(
         feature_information,
@@ -1033,22 +1013,20 @@ with project_tab:
 
     st.subheader("Models Compared")
 
-    model_comparison = pd.DataFrame(
-        {
-            "Model": [
-                "Linear Regression",
-                "Decision Tree Regressor",
-                "Random Forest Regressor",
-                "Tuned Random Forest Regressor"
-            ],
-            "Type": [
-                "Linear baseline",
-                "Tree-based model",
-                "Ensemble model",
-                "Tuned ensemble model"
-            ]
-        }
-    )
+    model_comparison = pd.DataFrame({
+        "Model": [
+            "Linear Regression",
+            "Decision Tree Regressor",
+            "Random Forest Regressor",
+            "Tuned Random Forest Regressor"
+        ],
+        "Type": [
+            "Linear baseline",
+            "Tree-based model",
+            "Ensemble model",
+            "Tuned ensemble model"
+        ]
+    })
 
     st.dataframe(
         model_comparison,
@@ -1091,9 +1069,11 @@ with project_tab:
 
 st.divider()
 
-footer_column_1, footer_column_2, footer_column_3 = (
-    st.columns(3)
-)
+(
+    footer_column_1,
+    footer_column_2,
+    footer_column_3
+) = st.columns(3)
 
 with footer_column_1:
     st.caption("Created by")
