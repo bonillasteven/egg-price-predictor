@@ -218,7 +218,7 @@ with st.sidebar:
 
     st.subheader("Model Information")
 
-    st.write("**Model:** Decision Tree Regressor")
+    st.write("**Model:** Tuned Random Forest Regressor")
     st.write(f"**Features:** {len(FEATURE_COLUMNS)}")
     st.write("**Target:** Monthly egg price")
 
@@ -800,7 +800,7 @@ with dashboard_tab:
     # Feature importance chart
     # -----------------------------------------------
 
-    st.subheader("Decision Tree Feature Importance")
+    st.subheader("Random Forest Feature Importance")
 
     if hasattr(model, "feature_importances_"):
 
@@ -906,7 +906,7 @@ with model_tab:
 
     st.write(
         """
-        The application uses a Decision Tree Regressor
+        The application uses a Random Forest Regressor
         trained on historical economic and agricultural
         data. The model learns decision rules that connect
         the input variables to different egg-price levels.
@@ -1084,7 +1084,7 @@ with footer_column_1:
 
 with footer_column_2:
     st.caption("Machine Learning Model")
-    st.write("**Decision Tree Regressor**")
+    st.write("**Tuned Random Forest Regressor**")
 
 with footer_column_3:
     st.caption("Built With")
