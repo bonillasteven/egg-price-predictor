@@ -56,7 +56,7 @@ st.markdown(
 # FILE PATHS AND FEATURES
 # ===================================================
 
-MODEL_PATH = "models/egg_price_model.pkl"
+MODEL_PATH = "models/tuned_random_forest.pkl"
 
 PREPROCESSING_PATH = (
     "models/egg_price_preprocessing.pkl"
@@ -79,7 +79,6 @@ FEATURE_COLUMNS = [
 # LOAD MODEL FILES
 # ===================================================
 
-@st.cache_resource
 def load_model_files():
     """Load the saved model and preprocessing pipeline."""
 
